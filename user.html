@@ -4,91 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ゲスト用QRコード</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            color: #333;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .container {
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 500px;
-            width: 100%;
-        }
-        h1 {
-            font-size: 1.8em;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        input {
-            width: calc(100% - 22px);
-            padding: 11px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 1em;
-        }
-        button {
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            width: 100%;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        #qrcode {
-            margin: 25px auto;
-            padding: 10px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            display: inline-block; /* QRコードを中央に配置 */
-        }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>あなたの入場用QRコード</h1>
-        <p>メールアドレスを入力してください。</p>
-        <input type="email" id="emailInput" placeholder="メールアドレス" required>
-        <button onclick="generateQrCode()">QRコードを表示</button>
-        <div id="qrcode"></div>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen flex items-center justify-center">
+    <div class="view-container max-w-md mx-auto p-6 mt-8">
+        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 text-center fade-in">
+            <div id="guestLogin" class="guest-section">
+                <h2 class="text-3xl font-bold text-white mb-6">🎫 Get Your QR Code</h2>
+                <p class="text-gray-200 mb-6">Enter your email to generate your BEENOS 2025 entry QR code</p>
+                <input type="email" id="guestEmail" placeholder="your.email@example.com"
+                        class="w-full p-4 rounded-xl bg-white bg-opacity-20 text-white placeholder-gray-300 border border-white border-opacity-30 focus:outline-none focus:ring-2 focus:ring-purple-400 mb-4">
+                <button onclick="generateQR()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-6 rounded-xl transition-all transform hover:scale-105">
+                    Generate QR Code ✨
+                </button>
+            </div>
+            
+            <div id="guestQR" class="guest-section hidden">
+                <h2 class="text-2xl font-bold text-white mb-4">Your Entry QR Code</h2>
+                <div class="bg-white p-6 rounded-2xl mb-4">
+                    <div id="qrcode"></div>
+                </div>
+                <p class="text-gray-200 mb-4">Show this QR code at the entrance</p>
+                <p id="guestEmailDisplay" class="text-purple-300 font-semibold mb-4"></p>
+                <button onclick="showGuestLogin()" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg transition-colors">
+                    Generate New Code
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
-        function generateQrCode() {
-            const email = document.getElementById('emailInput').value;
-            if (!email) {
-                alert('メールアドレスを入力してください。');
+        function generateQR() {
+            const email = document.getElementById('guestEmail').value.trim();
+            if (!email || !isValidEmail(email)) {
+                alert('Please enter a valid email address');
                 return;
             }
-            
-            document.getElementById("qrcode").innerHTML = "";
 
-            new QRCode(document.getElementById("qrcode"), {
-                text: email,
+            const qrData = email;
+            const qrcodeContainer = document.getElementById('qrcode');
+            qrcodeContainer.innerHTML = '';
+
+            new QRCode(qrcodeContainer, {
+                text: qrData,
                 width: 256,
                 height: 256,
                 colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                colorLight : "#FFFFFF"
             });
+
+            document.getElementById('guestEmailDisplay').textContent = email;
+            document.getElementById('guestLogin').classList.add('hidden');
+            document.getElementById('guestQR').classList.remove('hidden');
+        }
+
+        function showGuestLogin() {
+            document.getElementById('guestQR').classList.add('hidden');
+            document.getElementById('guestLogin').classList.remove('hidden');
+            document.getElementById('guestEmail').value = '';
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         }
     </script>
 </body>
