@@ -4,50 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>受付用QRスキャナー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 20px; }
-        #reader { width: 500px; margin: 0 auto; }
-        #message { margin-top: 20px; font-size: 1.2em; }
-        .success { color: green; }
-        .error { color: red; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-success { animation: pulseSuccess 0.6s ease-in-out; }
+        @keyframes pulseSuccess { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .scanner-frame { border: 3px solid #10b981; border-radius: 12px; position: relative; }
+        .scanner-corners::before, .scanner-corners::after { content: ''; position: absolute; width: 20px; height: 20px; border: 3px solid #10b981; }
+        .scanner-corners::before { top: -3px; left: -3px; border-right: none; border-bottom: none; }
+        .scanner-corners::after { bottom: -3px; right: -3px; border-left: none; border-top: none; }
     </style>
 </head>
-<body>
-    <h1>受付スキャナー</h1>
-    <p>お客様のQRコードをスキャンしてください。</p>
-    <div id="reader"></div>
-    <div id="message"></div>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen flex items-center justify-center">
+    <div class="view-container max-w-2xl mx-auto p-6">
+        <div class="bg-white bg-opacity-10 backdrop-blur-md rounded-2xl p-8 fade-in">
+            <h2 class="text-3xl font-bold text-white text-center mb-6">📱 QR Code Scanner</h2>
+            
+            <div id="scannerInterface">
+                <div class="scanner-frame scanner-corners bg-black rounded-xl overflow-hidden mb-4">
+                    <div id="qr-reader" class="w-full h-80"></div>
+                </div>
+                
+                <div class="text-center">
+                    <button id="startScanBtn" onclick="startScanner()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl transition-all">
+                        🎯 Start Scanner
+                    </button>
+                    <button id="stopScanBtn" onclick="stopScanner()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl transition-all hidden ml-4">
+                        ⏹️ Stop Scanner
+                    </button>
+                </div>
+            </div>
+
+            <div id="scanResult" class="hidden mt-6 p-6 bg-green-500 bg-opacity-20 border border-green-400 rounded-xl text-center">
+                <h3 class="text-xl font-bold text-green-300 mb-2">✅ Checked In!</h3>
+                <p id="scannedEmail" class="text-white text-lg"></p>
+                <p id="scanTime" class="text-green-200 text-sm mt-2"></p>
+            </div>
+
+            <div id="scanError" class="hidden mt-6 p-6 bg-red-500 bg-opacity-20 border border-red-400 rounded-xl text-center">
+                <h3 class="text-xl font-bold text-red-300 mb-2">❌ Scan Error</h3>
+                <p id="errorMessage" class="text-white"></p>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const qrCodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } });
-        const messageEl = document.getElementById('message');
+        let attendanceLogs = JSON.parse(localStorage.getItem('beenosAttendanceLogs') || '[]');
+        let html5QrCode = null;
 
-        function onScanSuccess(decodedText, decodedResult) {
-            console.log(`QR Code found: ${decodedText}`);
+        function startScanner() {
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
             
-            // ローカルストレージから既存のログを取得
-            const logs = JSON.parse(localStorage.getItem('scanLogs') || '[]');
+            html5QrCode = new Html5Qrcode("qr-reader");
+            
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                onScanSuccess,
+                onScanFailure
+            ).then(() => {
+                document.getElementById('startScanBtn').classList.add('hidden');
+                document.getElementById('stopScanBtn').classList.remove('hidden');
+                hideResults();
+            }).catch(err => {
+                console.error('Scanner start error:', err);
+                showError('Camera access denied or not available');
+            });
+        }
 
-            // ログに既に存在するかチェック
-            const alreadyScanned = logs.some(log => log.email === decodedText);
-            if (alreadyScanned) {
-                messageEl.textContent = `このゲストは既にチェックイン済みです: ${decodedText}`;
-                messageEl.className = 'error';
-            } else {
-                // 新しいログを保存
-                logs.push({
-                    email: decodedText,
-                    timestamp: new Date().toISOString()
+        function stopScanner() {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('startScanBtn').classList.remove('hidden');
+                    document.getElementById('stopScanBtn').classList.add('hidden');
+                }).catch(err => {
+                    console.error('Scanner stop error:', err);
                 });
-                localStorage.setItem('scanLogs', JSON.stringify(logs));
-                
-                messageEl.textContent = `✅ チェックイン成功: ${decodedText}`;
-                messageEl.className = 'success';
             }
         }
 
-        qrCodeScanner.render(onScanSuccess);
+        function onScanSuccess(decodedText) {
+            try {
+                const logs = JSON.parse(localStorage.getItem('beenosAttendanceLogs') || '[]');
+                const alreadyScanned = logs.some(log => log.email === decodedText);
+
+                if (alreadyScanned) {
+                    showError('Already checked in.');
+                    return;
+                }
+
+                const attendanceLog = {
+                    email: decodedText,
+                    timestamp: new Date().toISOString()
+                };
+
+                logs.push(attendanceLog);
+                localStorage.setItem('beenosAttendanceLogs', JSON.stringify(logs));
+
+                showScanSuccessMessage(decodedText, attendanceLog.timestamp);
+                
+                setTimeout(hideResults, 3000);
+
+            } catch (error) {
+                showError('Invalid QR code format');
+            }
+        }
+
+        function onScanFailure(error) {}
+
+        function showScanSuccessMessage(email, timestamp) {
+            hideResults();
+            document.getElementById('scannedEmail').textContent = email;
+            document.getElementById('scanTime').textContent = new Date(timestamp).toLocaleString();
+            document.getElementById('scanResult').classList.remove('hidden');
+            document.getElementById('scanResult').classList.add('pulse-success');
+        }
+
+        function showError(message) {
+            hideResults();
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('scanError').classList.remove('hidden');
+        }
+
+        function hideResults() {
+            document.getElementById('scanResult').classList.add('hidden');
+            document.getElementById('scanError').classList.add('hidden');
+            document.getElementById('scanResult').classList.remove('pulse-success');
+        }
     </script>
 </body>
 </html>
