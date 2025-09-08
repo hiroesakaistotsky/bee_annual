@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ゲスト用QRコード</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        #qrcode { margin: 20px auto; }
+        input, button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>あなたの入場用QRコード</h1>
+    <p>メールアドレスを入力してください。</p>
+    <input type="email" id="emailInput" placeholder="メールアドレス" required>
+    <button onclick="generateQrCode()">QRコードを表示</button>
+
+    <div id="qrcode"></div>
+
+    <script>
+        function generateQrCode() {
+            const email = document.getElementById('emailInput').value;
+            if (!email) {
+                alert('メールアドレスを入力してください。');
+                return;
+            }
+            
+            // QRコードをクリア
+            document.getElementById("qrcode").innerHTML = "";
+
+            // QRコードを生成
+            new QRCode(document.getElementById("qrcode"), {
+                text: email,
+                width: 256,
+                height: 256,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+    </script>
+</body>
+</html>

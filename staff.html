@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受付用QRスキャナー</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 20px; }
+        #reader { width: 500px; margin: 0 auto; }
+        #message { margin-top: 20px; font-size: 1.2em; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>受付スキャナー</h1>
+    <p>お客様のQRコードをスキャンしてください。</p>
+    <div id="reader"></div>
+    <div id="message"></div>
+
+    <script>
+        const qrCodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } });
+        const messageEl = document.getElementById('message');
+
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`QR Code found: ${decodedText}`);
+            
+            // ローカルストレージから既存のログを取得
+            const logs = JSON.parse(localStorage.getItem('scanLogs') || '[]');
+
+            // ログに既に存在するかチェック
+            const alreadyScanned = logs.some(log => log.email === decodedText);
+            if (alreadyScanned) {
+                messageEl.textContent = `このゲストは既にチェックイン済みです: ${decodedText}`;
+                messageEl.className = 'error';
+            } else {
+                // 新しいログを保存
+                logs.push({
+                    email: decodedText,
+                    timestamp: new Date().toISOString()
+                });
+                localStorage.setItem('scanLogs', JSON.stringify(logs));
+                
+                messageEl.textContent = `✅ チェックイン成功: ${decodedText}`;
+                messageEl.className = 'success';
+            }
+        }
+
+        qrCodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>
